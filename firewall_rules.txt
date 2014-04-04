@@ -13,7 +13,7 @@ permit udp src any srcport 53 dst 172.16.42.0/24 dstport any
 # allow internal hosts access to web (tcp ports 80 and 443)
 # rate limit http traffic to 100 kB/s (12500 bytes/sec)
 permit tcp src 172.16.42.0/24 srcport any dst any dstport 80 ratelimit 12500
-permit tcp src any srcport any dst 172.16.42.0/24 dstport 80 ratelimit 12500
+permit tcp src any srcport 80 dst 172.16.42.0/24 dstport any ratelimit 12500
 permit tcp src 172.16.42.0/24 srcport any dst any dstport 443
 permit tcp src any srcport any dst 172.16.42.0/24 dstport 443
 

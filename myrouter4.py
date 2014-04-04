@@ -18,6 +18,7 @@ from pox.lib.addresses import EthAddr,IPAddr, netmask_to_cidr
 from srpy_common import log_info, log_debug, log_warn, SrpyShutdown, SrpyNoPackets, debugger
 from math import floor
 from time import time
+import firewall
 
 #to do: build static forwarding table, forward packets appropriately, make ARP requests
 #for other hosts to get their MAC address (so basically the flip side of part 1 of this
@@ -34,7 +35,7 @@ class Router(object):
 			my_intfs.append((intf.ipaddr, IPAddr('255.255.255.255'), intf.ipaddr, intf.name))
 			neighborIP = IPAddr(intf.netmask.toUnsigned()&intf.ipaddr.toUnsigned())
 			fwd.append((neighborIP,intf.netmask, IPAddr('0.0.0.0'), intf.name))
-		f = open('forwarding_table3.txt', 'r') #getting not immediate neighbors from file
+		f = open('forwarding_table.txt', 'r') #getting not immediate neighbors from file
 		for line in f:
 			info = line.split(' ')
 			interface = info[3]
@@ -47,20 +48,24 @@ class Router(object):
 		self.forwarding_table = my_intfs + fwd 
 		self.queue = [] #a list of tuples for storing ARP requested packets
 		self.macaddrs = {} #cache of {IP:addr} mappings to cut down ARP requests
+                self.firewall = firewall.Firewall()
 		
 	def router_main(self):    
 		while True:
 			self.check_queue_times()
 			try:
-				dev,ts,pkt = self.net.recv_packet(timeout=1.0)
+				dev,ts,pkt = self.net.recv_packet(timeout=0.5)
 			except SrpyNoPackets:
 				# log_debug("Timeout waiting for packets")
+                                self.firewall.update_tokens()
 				continue
 			except SrpyShutdown:
 				return  
 			#part 2: forwarding packets and making ARP_request to obtain MAC address
 			if pkt.type == pkt.IP_TYPE:
 				pkt = pkt.payload
+                                if not self.firewall.forward_packet(pkt):
+                                    continue
 				match = None
 				match = self.FT_lookup(pkt, dev)
 				if match==None:
